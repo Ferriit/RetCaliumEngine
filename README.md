@@ -28,6 +28,8 @@
 ### Controls:
 - LMB           = Place a free-floating point
 - RMB           = Place a point that snaps to the grid in the background
+- MMB           = Pan around in the workspace
+- Scroll wheel  = Zoom in and out in the workspace
 - Arrow up      = Move upwards in the list of points
 - Arrow down    = Move downwards in the list of points
 - Enter         = Choose a point for connecting **(max two. If you select a third, the first two will be *deselected*)**
