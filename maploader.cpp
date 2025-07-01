@@ -155,6 +155,7 @@ Map ReadMap(std::string filename) {
     for (int i = 0; i < LineAmount; i++) {
         std::cout << "Buf#" << i << ": " << Buf[i] << std::endl;
         
+        
     }
     
     delete[] file;

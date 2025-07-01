@@ -4,8 +4,10 @@ LDFLAGS = -lglfw -lGLEW -lGL
 SRC = renderer.cpp maploader.cpp
 OBJ = $(SRC:.cpp=.o)
 TARGET = renderer
+MAPEDITOR = MapEditor
+VENV_DIR = venv  # Change this if your venv is in a different folder
 
-all: $(TARGET)
+all: $(TARGET) $(MAPEDITOR)
 
 $(TARGET): $(OBJ)
 	$(CXX) -o $@ $^ $(LDFLAGS)
@@ -13,21 +15,28 @@ $(TARGET): $(OBJ)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+
+$(MAPEDITOR):
+	@echo "Building MapEditor using venv..."
+	@. $(VENV_DIR)/bin/activate && pyinstaller --onefile maploader.py && deactivate
+
+
 clean:
 	rm -f *.o $(TARGET)
+	rm -rf dist build __pycache__ *.spec
 
 
 install:
-	@echo "Installing dependencies (GLFW, GLEW, Mesa)..."
+	@echo "Installing dependencies (GLFW, GLEW, Mesa, Python, Pip)..."
 	@if [ -x "$$(command -v pacman)" ]; then \
-		sudo pacman -S --needed glfw glew mesa; \
+		sudo pacman -S --needed glfw glew mesa python python-pip; \
 	elif [ -x "$$(command -v apt)" ]; then \
-		sudo apt update && sudo apt install -y libglfw3-dev libglew-dev mesa-common-dev; \
+		sudo apt update && sudo apt install -y libglfw3-dev libglew-dev mesa-common-dev python3 python3-pip; \
 	elif [ -x "$$(command -v dnf)" ]; then \
-		sudo dnf install glfw-devel glew-devel mesa-libGL-devel; \
+		sudo dnf install -y glfw-devel glew-devel mesa-libGL-devel python3 python3-pip; \
 	elif [ -x "$$(command -v zypper)" ]; then \
-		sudo zypper install glfw-devel glew-devel Mesa-libGL-devel; \
+		sudo zypper install -y glfw-devel glew-devel Mesa-libGL-devel python3 python3-pip; \
 	else \
-		echo "Unsupported package manager. Install GLFW, GLEW, and Mesa manually."; \
+		echo "Unsupported package manager. Install GLFW, GLEW, Mesa, Python, and Pip manually."; \
 	fi
 
