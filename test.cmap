@@ -1,0 +1,14 @@
+n TestMap             # Name
+l 2 3 0 1 1 1 5.      # Light: X, Y, Z, R, G, B, Intensity
+
+v 0 0 0               # Vertices: X, Y, Z
+v 0 1 0
+v 1 0 0
+v 1 1 0
+
+w 0 2 0               # Walls: Vertex indices IsPortal (0 = False, 1 = True)
+w 1 0 0
+w 3 1 0
+w 2 3 0
+
+s 4 0 1 2 3 2         # Sector: WallAmount [Walls] CeilingHeight
