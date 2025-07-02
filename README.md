@@ -37,6 +37,11 @@
 - Shift + Enter = Connect the chosen lines with a section **(The two points have to be chosen *before* pressing Shift + Enter)**
 - Ctrl + Enter  = Clear the list of lines to connect
 
+- Arrow Left/Right = Change the height of the currently selected section
+- Shift + Left/Right = Change the floor heiht of the currently selected section
+- R             = Round the currently selected section's height to the nearest integer
+- Shift+R       = Round the currently selected section's floor height to the nearest integer
+
 ### Points list:
 - Blue entry    = Point
 - Cyan entry    = Selected
@@ -57,4 +62,5 @@
 - White line    = Selected Line
 
 - Yellow Area   = Section
-- Blue text     = Section name
+- White Area    = Selected Section
+- Blue/Black text = Section name
