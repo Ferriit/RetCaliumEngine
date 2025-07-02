@@ -32,8 +32,10 @@
 - Scroll wheel  = Zoom in and out in the workspace
 - Arrow up      = Move upwards in the list of points
 - Arrow down    = Move downwards in the list of points
-- Enter         = Choose a point for connecting **(max two. If you select a third, the first two will be *deselected*)**
-- Shift + Enter = Connect the two chosen points with a line **(The two points have to be chosen *before* pressing Shift + Enter)**
+- Enter         = If Points list is selected: Choose a point for connecting **(The lines get connected when the second one is chosen)**
+                  If Lines list is selected: Choose a line for connecting
+- Shift + Enter = Connect the chosen lines with a section **(The two points have to be chosen *before* pressing Shift + Enter)**
+- Ctrl + Enter  = Clear the list of lines to connect
 
 ### Points list:
 - Blue entry    = Point
@@ -41,10 +43,18 @@
 - Red entry     = Chosen for connecting
 - Pink entry    = Selected & chosen for connecting
 
+### Lines list:
+- Red entry     = Line
+- White entry   = Selected Line
+
 ### Workspace:
-- Yellow dot    = Selected dot in the points list
+- White dot     = Selected dot in the points list
 - Green dot     = Point in the points list
 - Purple dot    = Dot chosen for connecting in the points list
-- Pink dot      = Dot chosen for connecting & point selected in the points list
+- Red dot       = Dot chosen for connecting & point selected in the points list
 
 - Red line      = Line connecting two dots
+- White line    = Selected Line
+
+- Yellow Area   = Section
+- Blue text     = Section name

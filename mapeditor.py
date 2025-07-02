@@ -18,6 +18,9 @@ WorldSpacePoints = []
 
 Lines = []
 
+Sections = []
+SectionHeights = []
+
 #AllowNewPoint = True
 
 zoom = 1
@@ -29,7 +32,6 @@ run = True
 panning = False
 
 font = pg.font.SysFont(None, 36)  # None = default font, 36 = font size
-
 
 
 def world_to_screen(x, y, offset, zoom, screen_width, screen_height):
@@ -67,7 +69,7 @@ def DrawGrid(surface, width, height, offset, zoom, spacing=100, color=(50, 50, 5
         y += grid_spacing
 
 
-def RenderList(window, Points, MarkedIDX, MarkedForLinking: tuple[int, int]):
+def RenderPointsList(window, Points, MarkedIDX, MarkedForLinking: tuple[int, int]):
     Bevel = 5
     Size = 36
     ListFont = pg.font.SysFont(None, Size - Bevel)
@@ -95,9 +97,76 @@ def RenderList(window, Points, MarkedIDX, MarkedForLinking: tuple[int, int]):
     ListLabel = ListFont.render(f"Points:", True, (255, 255, 255))
     window.blit(ListLabel, (WIDTH - 195, 5))
 
+
+def RenderLineList(window, Points, MarkedIDX, MarkedForLinking: tuple[int, int]):
+    Bevel = 5
+    Size = 36
+    ListFont = pg.font.SysFont(None, Size - Bevel)
+
+
+    Visible = math.floor(HEIGHT / Size)
+    Visible = Visible - Visible % 2
+
+    if MarkedIDX > Visible / 2 and len(Points) + 8 > Visible:
+        Offset = (MarkedIDX - (Visible / 2)) * Size
+    else:
+        Offset = 0
+    
+    pg.draw.rect(window, (25, 25, 25), (WIDTH - 400, 0, 200, HEIGHT))
+    for i in range(len(Points)):
+        Color = (255, 0, 0) if i != MarkedIDX else (255, 255, 255)
+        if i in MarkedForLinking:
+            Color = (255, 0, 0) if i != MarkedIDX else (255, 196, 196)
+
+        pg.draw.rect(window, Color, (WIDTH - (400 - Bevel), Bevel + (i + 1) * Size - Offset, 200 - 2 * Bevel, Size - 2 * Bevel))       # Render box for text
+        px, py = Points[i]
+        PointLabel = ListFont.render(f"{WorldSpacePoints[px]}, {WorldSpacePoints[py]}", True, (255, 255, 255) if i != MarkedIDX else (0, 0, 0))
+        window.blit(PointLabel, (WIDTH - (400 - Bevel) + Bevel / 2, (Bevel * 1.5) + (i + 1) * Size - Offset))
+
+    pg.draw.rect(window, (25, 25, 25), (WIDTH - 400, 0, 200, Size))
+    ListLabel = ListFont.render(f"Lines:", True, (255, 255, 255))
+    window.blit(ListLabel, (WIDTH - 395, 5))
+
+
+def RenderSectionList(window, Points, MarkedIDX, MarkedForLinking: tuple[int, int]):
+    Bevel = 5
+    Size = 36
+    ListFont = pg.font.SysFont(None, Size - Bevel)
+
+    Visible = math.floor(HEIGHT / Size)
+    Visible = Visible - Visible % 2
+
+    if MarkedIDX > Visible / 2 and len(Points) + 8 > Visible:
+        Offset = (MarkedIDX - (Visible / 2)) * Size
+    else:
+        Offset = 0
+    
+    pg.draw.rect(window, (25, 25, 25), (WIDTH - 600, 0, 200, HEIGHT))
+    for i in range(len(Points)):
+        Color = (255, 255, 0) if i != MarkedIDX else (255, 255, 255)
+        if i in MarkedForLinking:
+            Color = (255, 0, 0) if i != MarkedIDX else (255, 196, 196)
+
+        pg.draw.rect(window, Color, (WIDTH - (600 - Bevel), Bevel + (i + 1) * Size - Offset, 200 - 2 * Bevel, Size - 2 * Bevel))       # Render box for text
+        #px, py = Points[i]
+        PointLabel = ListFont.render(f"[{i}]", True, (0, 0, 0))
+        window.blit(PointLabel, (WIDTH - (600 - Bevel) + Bevel / 2, (Bevel * 1.5) + (i + 1) * Size - Offset))
+
+    pg.draw.rect(window, (25, 25, 25), (WIDTH - 600, 0, 200, Size))
+    ListLabel = ListFont.render(f"Sections:", True, (255, 255, 255))
+    window.blit(ListLabel, (WIDTH - 595, 5))
+
+
 ListPointer = 0
+LineListPointer = 0
+SectionListPointer = 0
+SelectedList = 0        # 0 for PointsList, 1 for LineList, 2 for SectionList when selecting which one to interact with
 
 MarkedForLinking = (-1, -1)
+
+LinesMarkedForLinking = []
+
+poly_surf = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
 
 while run:
     window.fill((0, 0, 0))
@@ -107,55 +176,105 @@ while run:
             sys.exit()
 
         elif event.type == pg.KEYDOWN:
-            # Scrolling up and down in the list
-            if event.key == pg.K_UP and len(Points) > 1:
+            # Scrolling up and down in the points list
+            if event.key == pg.K_UP and len(Points) > 1 and SelectedList == 0:
                 ListPointer -= 1
                 ListPointer %= max(0, len(Points))
 
-            elif event.key == pg.K_DOWN and len(Points) > 1:
+            elif event.key == pg.K_DOWN and len(Points) > 1 and SelectedList == 0:
                 ListPointer += 1
                 ListPointer %= max(0, len(Points))
 
+            # Scrolling up and down in the lines list
+            elif event.key == pg.K_UP and len(Lines) > 1 and SelectedList == 1:
+                LineListPointer -= 1
+                LineListPointer %= max(0, len(Lines))
+
+            elif event.key == pg.K_DOWN and len(Lines) > 1 and SelectedList == 1:
+                LineListPointer += 1
+                LineListPointer %= max(0, len(Lines))
+
             # Deleting points
-            elif event.key == pg.K_BACKSPACE and len(Points) > 0:
+            elif event.key == pg.K_BACKSPACE and len(Points) > 0 and SelectedList == 0:
                 Points.pop(ListPointer)
                 WorldSpacePoints.pop(ListPointer)
+
+                PoppedAmount = 0
+
+                Lines = [line for line in Lines if ListPointer not in line]
+
                 ListPointer -= 1
                 if len(Points) > 1:
                     ListPointer %= len(Points)
                 else:
                     ListPointer = 0
 
+
+            # Deleting Lines
+            elif event.key == pg.K_BACKSPACE and len(Lines) > 0 and SelectedList == 1:
+                Lines.pop(LineListPointer)
+                LineListPointer -= 1
+                if len(Lines) > 1:
+                    LineListPointer %= len(Points)
+                else:
+                    LineListPointer = 0
+
+                if len(Lines) == 0:
+                    SelectedList = 0
+
             # Linking Points
-            elif event.key == pg.K_RETURN:
-                ShiftPressed = pg.key.get_pressed()[pg.K_LSHIFT] or pg.key.get_pressed()[pg.K_RSHIFT]
-                if not ShiftPressed:
-                    FM, LM = MarkedForLinking               # First Marked, Last Marked
+            elif event.key == pg.K_RETURN and SelectedList == 0:
+                FM, LM = MarkedForLinking               # First Marked, Last Marked
                     
-                    if ListPointer == FM:
-                        FM = -1
+                if ListPointer == FM:
+                    FM = -1
 
-                    elif ListPointer == LM:
-                        LM = -1
+                elif ListPointer == LM:
+                    LM = -1
 
-                    elif FM == -1:
-                        FM = ListPointer
+                elif FM == -1:
+                    FM = ListPointer
 
-                    elif LM == -1:
-                        LM = ListPointer
-
-                    else:
-                        LM = -1
-                        FM = -1
-
-                    MarkedForLinking = FM, LM
+                elif LM == -1:
+                    LM = ListPointer
 
                 else:
-                    FM, LM = MarkedForLinking
-                    Lines.append((FM, LM))
+                    LM = -1
+                    FM = -1
+
+                if (FM, LM) not in Lines and (LM, FM) not in Lines:
+                    MarkedForLinking = FM, LM
+
+                if FM != -1 and LM != -1: 
+                    if (FM, LM) not in Lines and (LM, FM) not in Lines and FM != -1 and LM != -1:
+                        Lines.append((FM, LM))
                     FM = -1
                     LM = -1
                     MarkedForLinking = FM, LM
+
+            # Join lines to section if Shift + Enter, clear list if Ctrl + Enter, add to list if Enter
+            elif event.key == pg.K_RETURN and SelectedList == 1:
+                Keys = pg.key.get_pressed()
+                if Keys[pg.K_LCTRL] or Keys[pg.K_RCTRL]:
+                    LinesMarkedForLinking = 0
+
+                elif Keys[pg.K_LSHIFT] or Keys[pg.K_RSHIFT]:
+                    # Sort before comparing to normalize order
+                    current_section_sorted = sorted(LinesMarkedForLinking)
+                    if not any(sorted(path) == current_section_sorted for path in Sections):
+                        Sections.append(LinesMarkedForLinking[:])  # Copy to avoid shared reference
+                        LinesMarkedForLinking = []
+ 
+                else:
+                    if Lines[LineListPointer] not in LinesMarkedForLinking:
+                        LinesMarkedForLinking.append(LineListPointer)
+                    
+                    else:
+                        LinesMarkedForLinking = []
+
+            elif event.key in (pg.K_LCTRL, pg.K_RCTRL):
+                    SelectedList += 1
+                    SelectedList %= 3
 
         elif event.type == pg.MOUSEBUTTONDOWN:
             MouseButtons = pg.mouse.get_pressed()
@@ -214,17 +333,53 @@ while run:
     #    else:
     #        Points[len(Points) - 1] = pg.mouse.get_pos()  # Replace point in list
 
+
+    poly_surf.fill((0, 0, 0, 0))
+
+
+    # Draw Sections
+    for i in range(len(Sections)):
+        AveragePosition = (0, 0)
+        DrawPoints = []
+        Iterations = 0
+        for j in Sections[i]:
+            FM, LM = Lines[j]
+            p1, p2 = Points[FM], Points[LM]
+            x1, y1 = p1
+            x2, y2 = p2
+            
+            ax, ay = AveragePosition
+            ax += x1 + x2
+            ay += y1 + y2
+            AveragePosition = ax, ay
+
+            DrawPoints.append(world_to_screen(x1, y1, Offset, zoom, WIDTH, HEIGHT))
+            DrawPoints.append(world_to_screen(x2, y2, Offset, zoom, WIDTH, HEIGHT))
+            Iterations += 1
+
+        ax, ay = AveragePosition
+        ax /= Iterations * 2
+        ay /= Iterations * 2
+        AveragePosition = world_to_screen(ax, ay, Offset, zoom, WIDTH, HEIGHT)
+
+        pg.draw.polygon(window, (128, 128, 0), DrawPoints)
+
+        SectionText = font.render(f"[{i}]", True, (0, 0, 255))
+        text_rect = SectionText.get_rect(center=AveragePosition)
+        window.blit(SectionText, text_rect)
+
     DrawGrid(window, WIDTH, HEIGHT, Offset, zoom)
-
-    RenderList(window, WorldSpacePoints, ListPointer, MarkedForLinking)
-
 
     # Draw Lines
     for i in range(len(Lines)):
         FM, LM = Lines[i]
         fx, fy = Points[FM]
         lx, ly = Points[LM]
-        pg.draw.line(window, (255, 0, 0), world_to_screen(fx, fy, Offset, zoom, WIDTH, HEIGHT), world_to_screen(lx, ly, Offset, zoom, WIDTH, HEIGHT), 2)
+        Color = (255, 0, 0) if i != LineListPointer else (255, 255, 255)
+        if SelectedList == 0:
+            Color = (255, 0, 0)
+
+        pg.draw.line(window, Color, world_to_screen(fx, fy, Offset, zoom, WIDTH, HEIGHT), world_to_screen(lx, ly, Offset, zoom, WIDTH, HEIGHT), 2)
 
 
     # Draw Points
@@ -233,10 +388,14 @@ while run:
         x, y = Points[i]
         x = (x - WIDTH / 2) * zoom + WIDTH / 2 + ox
         y = (y - HEIGHT / 2) * zoom + HEIGHT / 2 + oy
-        Color = (0, 255, 0) if i != ListPointer else (255, 255, 0)
+        Color = (0, 255, 0) if i != ListPointer else (255, 255, 255)
+
         
         if i in MarkedForLinking:
-            Color = (255, 128, 255) if i != ListPointer else (255, 196, 196)
+            Color = (255, 128, 255) if i != ListPointer else (255, 64, 64)
+
+        if SelectedList == 1:
+            Color = (0, 255, 0)
 
         pg.draw.aacircle(window, Color, (x, y), max(7.5 * zoom, 1))
 
@@ -244,5 +403,8 @@ while run:
         PositionSurface = font.render(f"({ax}, {ay})", True, Color)
         window.blit(PositionSurface, (x + max(2, 7.5 * zoom), y))
 
+    RenderLineList(window, Lines, LineListPointer if SelectedList == 1 else -1, (-1, -1))
+    RenderPointsList(window, WorldSpacePoints, ListPointer if SelectedList == 0 else -1, MarkedForLinking)
+    RenderSectionList(window, Sections, -1, (-1, -1))
 
     pg.display.flip()
