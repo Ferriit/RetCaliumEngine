@@ -2,6 +2,7 @@ import pygame as pg
 import tkinter as tk
 import sys
 import math
+from collections import defaultdict, deque
 
 
 root = tk.Tk()
@@ -101,7 +102,7 @@ def RenderPointsList(window, Points, MarkedIDX, MarkedForLinking: tuple[int, int
     window.blit(ListLabel, (WIDTH - 195, 5))
 
 
-def RenderLineList(window, Points, MarkedIDX, MarkedForLinking):
+def RenderLineList(window, Points, MarkedIDX, MarkedForLinking, Portals):
     Bevel = 5
     Size = 36
     ListFont = pg.font.SysFont(None, Size - Bevel)
@@ -114,12 +115,16 @@ def RenderLineList(window, Points, MarkedIDX, MarkedForLinking):
         Offset = (MarkedIDX - (Visible / 2)) * Size
     else:
         Offset = 0
-    
+   
     pg.draw.rect(window, (25, 25, 25), (WIDTH - 400, 0, 200, HEIGHT))
     for i in range(len(Points)):
         Color = (255, 0, 0) if i != MarkedIDX else (255, 255, 255)
-        if i in MarkedForLinking:
-            Color = (128, 0, 0) if i != MarkedIDX else (255, 196, 196)
+        if type(MarkedForLinking) != int:
+            if i in MarkedForLinking:
+                Color = (128, 0, 0) if i != MarkedIDX else (255, 196, 196)
+
+        if Portals[i] == 1:
+            Color = (128, 0, 128) if i != MarkedIDX else (255, 128, 255)
 
         pg.draw.rect(window, Color, (WIDTH - (400 - Bevel), Bevel + (i + 1) * Size - Offset, 200 - 2 * Bevel, Size - 2 * Bevel))       # Render box for text
         px, py = Points[i]
@@ -158,6 +163,71 @@ def RenderSectionList(window, Points, MarkedIDX, MarkedForLinking: tuple[int, in
     pg.draw.rect(window, (25, 25, 25), (WIDTH - 600, 0, 200, Size))
     ListLabel = ListFont.render(f"Sections:", True, (255, 255, 255))
     window.blit(ListLabel, (WIDTH - 595, 5))
+
+
+def MakeClockwiseSection(Points, Lines, Section, Clockwise=True):
+    """
+    Returns a list of point indices forming a connected, non-self-intersecting loop.
+    Points   : list of (x, y) tuples
+    Lines    : list of (i, j) tuples of point-indices
+    Section  : list of indices into Lines
+    Clockwise: desired winding order
+    """
+    # 1) Build adjacency from selected lines
+    adjacency = defaultdict(list)
+    for lineIndex in Section:
+        a, b = Lines[lineIndex]
+        adjacency[a].append(b)
+        adjacency[b].append(a)
+
+    # 2) Find a starting point (one with only one neighbor if it's an open path)
+    start = None
+    for pointIdx, neighbors in adjacency.items():
+        if len(neighbors) == 1:
+            start = pointIdx
+            break
+    if start is None:
+        start = next(iter(adjacency))  # Closed loop
+
+    # 3) Traverse the loop/path
+    visited = set()
+    orderedIndices = []
+
+    current = start
+    prev = None
+    while True:
+        orderedIndices.append(current)
+        visited.add(current)
+        neighbors = adjacency[current]
+
+        # Choose the next unvisited neighbor (prefer avoiding backtracking)
+        nextPoint = None
+        for neighbor in neighbors:
+            if neighbor != prev and neighbor not in visited:
+                nextPoint = neighbor
+                break
+
+        if nextPoint is None:
+            break  # Done
+
+        prev, current = current, nextPoint
+
+    # 4) If clockwise direction is desired, compute area and reverse if needed
+    def signedArea(indices):
+        area = 0
+        n = len(indices)
+        for i in range(n):
+            x1, y1 = Points[indices[i]]
+            x2, y2 = Points[indices[(i + 1) % n]]
+            area += (x1 * y2 - x2 * y1)
+        return area / 2
+
+    area = signedArea(orderedIndices)
+    isClockwise = area < 0
+    if isClockwise != Clockwise:
+        orderedIndices.reverse()
+
+    return orderedIndices
 
 
 ListPointer = 0
@@ -232,10 +302,10 @@ while run:
                 Lines = [tuple(AdjustIndex(i, ListPointer) for i in line) for line in Lines]
 
                 ListPointer -= 1
-                if len(Points) > 1:
-                    ListPointer %= len(Points)
-                else:
+                if len(Points) == 0:
                     ListPointer = 0
+                else:
+                    ListPointer %= len(Points)
 
 
             # Deleting Lines
@@ -294,6 +364,7 @@ while run:
                 if FM != -1 and LM != -1: 
                     if (FM, LM) not in Lines and (LM, FM) not in Lines and FM != -1 and LM != -1:
                         Lines.append((FM, LM))
+                        Portals.append(0)
                     FM = -1
                     LM = -1
                     MarkedForLinking = FM, LM
@@ -308,13 +379,13 @@ while run:
                     # Sort before comparing to normalize order
                     current_section_sorted = sorted(LinesMarkedForLinking)
                     if not any(sorted(path) == current_section_sorted for path in Sections):
-                        Sections.append(LinesMarkedForLinking[:])  # Copy to avoid shared reference
+                        Sections.append(MakeClockwiseSection(Points, Lines, LinesMarkedForLinking[:]))  # Copy to avoid shared reference
                         SectionHeights.append(1)
                         SectionFloors.append(1)
                         LinesMarkedForLinking = []
  
                 else:
-                    if Lines[LineListPointer] not in LinesMarkedForLinking:
+                    if LineListPointer != LinesMarkedForLinking:
                         LinesMarkedForLinking.append(LineListPointer)
                     
                     else:
@@ -323,13 +394,19 @@ while run:
             elif event.key in (pg.K_LCTRL, pg.K_RCTRL):
                     SelectedList += 1
                     if len(Lines) == 0:
-                        SelectedList = 1
+                        SelectedList = 0
 
                     elif len(Sections) == 0:
                         SelectedList %= 2
                         
                     else:
                         SelectedList %= 3
+
+            # Make a line a portal
+            elif event.key == pg.K_p and SelectedList == 1:
+                Portals[LineListPointer] += 1
+                Portals[LineListPointer] %= 2
+
 
         elif event.type == pg.MOUSEBUTTONDOWN:
             MouseButtons = pg.mouse.get_pressed()
@@ -444,10 +521,15 @@ while run:
         if SelectedList in (0, 1):
             Color = (128, 128, 0)
 
-        pg.draw.polygon(window, Color, DrawPoints)
+        print(i, Sections[i])
 
-        SectionText = sectionfont.render(f"[{i}]\n{SectionHeights[SectionListPointer]}m\n{SectionFloors[SectionListPointer]}m", True, (0, 0, 255) if i != SectionListPointer and SelectedList == 2 else (0, 0, 0))
+        SectionSurface = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
+        pg.draw.polygon(SectionSurface, Color, DrawPoints)
         
+        window.blit(SectionSurface, (0, 0))
+
+        SectionText = sectionfont.render(f"[{i}]\n{SectionHeights[i]}m\n{SectionFloors[i]}m", True, (0, 0, 255) if i != SectionListPointer and SelectedList == 2 else (0, 0, 0))
+
         text_rect = SectionText.get_rect(center=AveragePosition)
         window.blit(SectionText, text_rect)
 
@@ -486,7 +568,7 @@ while run:
         PositionSurface = font.render(f"({ax}, {ay})", True, Color)
         window.blit(PositionSurface, (x + max(2, 7.5 * zoom), y))
 
-    RenderLineList(window, Lines, LineListPointer if SelectedList == 1 else -1, LinesMarkedForLinking)
+    RenderLineList(window, Lines, LineListPointer if SelectedList == 1 else -1, LinesMarkedForLinking, Portals)
     RenderPointsList(window, WorldSpacePoints, ListPointer if SelectedList == 0 else -1, MarkedForLinking)
     RenderSectionList(window, Sections, SectionListPointer if SelectedList == 2 else -1, (-1, -1))
 

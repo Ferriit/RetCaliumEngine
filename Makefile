@@ -5,9 +5,9 @@ SRC = renderer.cpp maploader.cpp
 OBJ = $(SRC:.cpp=.o)
 TARGET = renderer
 MAPEDITOR = MapEditor
-VENV_DIR = venv  # Change this if your venv is in a different folder
+VENV_DIR = venv/bin/activate  # Change this if your venv is in a different folder
 
-all: $(TARGET) $(MAPEDITOR)
+all: $(TARGET) $(MAPEDITOR) clean
 
 $(TARGET): $(OBJ)
 	$(CXX) -o $@ $^ $(LDFLAGS)
@@ -18,13 +18,17 @@ $(TARGET): $(OBJ)
 
 $(MAPEDITOR):
 	@echo "Building MapEditor using venv..."
-	@. $(VENV_DIR)/bin/activate && pyinstaller --onefile maploader.py && deactivate
+	@. $(VENV_DIR) && pyinstaller --onefile mapeditor.py && deactivate
 
 
 clean:
-	rm -f *.o $(TARGET)
-	rm -rf dist build __pycache__ *.spec
-
+	rm -f *.o
+	rm -rf build __pycache__ *.spec
+	
+	mkdir build
+	mv renderer build/
+	mv dist/mapeditor build
+	rm -rf dist
 
 install:
 	@echo "Installing dependencies (GLFW, GLEW, Mesa, Python, Pip)..."
