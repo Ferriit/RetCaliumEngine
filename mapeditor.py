@@ -244,6 +244,10 @@ poly_surf = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
 def AdjustIndex(i, RemovedIndex):
     return i - 1 if i > RemovedIndex else i
 
+
+SectionSurface = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
+TextSurface = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
+
 while run:
     
     window.fill((0, 0, 0))
@@ -491,6 +495,8 @@ while run:
 
     poly_surf.fill((0, 0, 0, 0))
 
+    SectionSurface.fill((0, 0, 0, 0))
+    TextSurface.fill((0, 0, 0, 0))
 
     # Draw Sections
     for i in range(len(Sections)):
@@ -521,17 +527,18 @@ while run:
         if SelectedList in (0, 1):
             Color = (128, 128, 0)
 
-        print(i, Sections[i])
 
-        SectionSurface = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
         pg.draw.polygon(SectionSurface, Color, DrawPoints)
         
-        window.blit(SectionSurface, (0, 0))
 
         SectionText = sectionfont.render(f"[{i}]\n{SectionHeights[i]}m\n{SectionFloors[i]}m", True, (0, 0, 255) if i != SectionListPointer and SelectedList == 2 else (0, 0, 0))
 
         text_rect = SectionText.get_rect(center=AveragePosition)
-        window.blit(SectionText, text_rect)
+        TextSurface.blit(SectionText, text_rect)
+
+
+    window.blit(SectionSurface, (0, 0))
+    window.blit(TextSurface, (0, 0))
 
     DrawGrid(window, WIDTH, HEIGHT, Offset, zoom)
 
